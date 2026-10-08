@@ -109,13 +109,20 @@ var KEY = 'katsdorf-checklist-v1';
 var S = load();
 
 function uid(){ return Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4); }
+function normalize(s){
+  var fix = function(list, key){ (list||[]).forEach(function(o){ if (o && typeof o[key] === 'string') o[key] = capFirst(o[key].replace(/^\s+/, '')); }); };
+  fix(s.categories, 'name'); fix(s.tasks, 'text');
+  (s.archive||[]).forEach(function(a){ fix(a.categories, 'name'); fix(a.tasks, 'text'); });
+  return s;
+}
 function load(){
-  try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.tasks) && Array.isArray(s.categories)) { s.collapsed = s.collapsed||{}; s.archive = s.archive||[]; return s; } } catch(e){}
+  try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.tasks) && Array.isArray(s.categories)) { s.collapsed = s.collapsed||{}; s.archive = s.archive||[]; return normalize(s); } } catch(e){}
   return { categories: [], tasks: [], hideDone: false, collapsed: {}, archive: [] };
 }
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
 function h(tag, attrs, kids){
   var el = document.createElement(tag);
+  if (tag === 'input') el.setAttribute('autocapitalize', 'sentences');
   for (var k in (attrs||{})) {
     if (k === 'class') el.className = attrs[k];
     else if (k.slice(0,2) === 'on') el.addEventListener(k.slice(2), attrs[k]);
@@ -415,7 +422,7 @@ function finishSeasonSheet(){
     h('p', {class:'note', text:'Saves a snapshot of the list as it is now (' + done + ' of ' + total + ' done), then unticks everything for next time. Your items and categories stay.'}),
     h('label', {text:'Name of this season'}), inp,
     actions([btn('Cancel','sec',closeSheet), btn('Archive & reset','',function(){
-      S.archive.unshift({ id:uid(), name:inp.value.trim() || String(new Date().getFullYear()), savedAt:new Date().toISOString(),
+      S.archive.unshift({ id:uid(), name:capFirst(inp.value.trim()) || String(new Date().getFullYear()), savedAt:new Date().toISOString(),
         categories:JSON.parse(JSON.stringify(S.categories)), tasks:JSON.parse(JSON.stringify(S.tasks)) });
       S.tasks.forEach(function(t){ t.done = false; t.doneAt = null; });
       save(); closeSheet(); render(); toast('Season archived');
@@ -474,7 +481,7 @@ document.getElementById('fileRestore').addEventListener('change', function(e){
     var j = JSON.parse(txt), s = j.state || j;
     if (!s || !Array.isArray(s.tasks) || !Array.isArray(s.categories)) throw new Error('bad');
     confirmSheet('Restore backup?', 'This replaces the current list with ' + s.tasks.length + ' items from the backup.', 'Restore', function(){
-      S = { categories:s.categories, tasks:s.tasks, hideDone:!!s.hideDone, collapsed:s.collapsed||{}, archive:s.archive||[] }; save(); render(); toast('Backup restored');
+      S = normalize({ categories:s.categories, tasks:s.tasks, hideDone:!!s.hideDone, collapsed:s.collapsed||{}, archive:s.archive||[] }); save(); render(); toast('Backup restored');
     });
   }).catch(function(){ toast('That file is not a valid backup'); });
 });
@@ -489,7 +496,7 @@ function loadScript(src){
 }
 function truthy(v){ return /^\s*(y|yes|x|1|true|ja|j|✓|✔|★|\*)/i.test(String(v)); }
 
-function capFirst(x){ return x.charAt(0).toUpperCase() + x.slice(1); }
+function capFirst(x){ x = String(x); return (x.charAt(0) === '\u00DF') ? x : x.charAt(0).toUpperCase() + x.slice(1); }
 function parseBlocks(raw){
   // single-column list: groups separated by blank rows; first row of a group is its category title
   var out = [], block = [];
@@ -545,8 +552,8 @@ document.getElementById('fileImport').addEventListener('change', function(e){
         var cid = addCategory(i.cat);
         if (!replace && S.tasks.some(function(t){ return !t.wt && t.cat === cid && t.text.toLowerCase() === i.text.toLowerCase(); })) return;
         var id = uid();
-        S.tasks.push({ id:id, text:i.text, cat:cid, done:false, wt:false });
-        if (i.wt) S.tasks.push({ id:uid(), text:i.text, cat:cid, done:false, wt:true, srcId:id });
+        S.tasks.push({ id:id, text:capFirst(i.text), cat:cid, done:false, wt:false });
+        if (i.wt) S.tasks.push({ id:uid(), text:capFirst(i.text), cat:cid, done:false, wt:true, srcId:id });
       });
       save(); closeSheet(); render(); toast('Imported ' + items.length + ' items');
     };
@@ -565,6 +572,18 @@ function loadSeed(){
   SEED.forEach(function(i){ S.tasks.push({ id:uid(), text:i.text, cat:addCategory(i.cat), done:false, wt:false }); });
   save(); render();
 }
+
+/* every text field: first letter becomes a capital as you type */
+document.addEventListener('input', function(e){
+  var el = e.target;
+  if (!el || el.tagName !== 'INPUT' || el.type !== 'text') return;
+  var v = el.value;
+  if (v && v.charAt(0) !== capFirst(v).charAt(0)) {
+    var a = el.selectionStart, b = el.selectionEnd;
+    el.value = capFirst(v);
+    try { el.setSelectionRange(a, b); } catch(err){}
+  }
+}, true);
 
 /* ---------- boot ---------- */
 render();
