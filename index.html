@@ -47,6 +47,10 @@ main{padding:12px 16px}
 .gbtn{border:0;background:transparent;color:var(--muted);width:40px;height:44px;font-size:22px}
 .task{display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;border-top:1px solid var(--line);min-height:56px}
 .task.done{background:var(--done-bg)}
+.grip{border:0;background:transparent;color:var(--muted);width:36px;height:44px;font-size:24px;line-height:1;touch-action:none;cursor:grab;flex:none;padding:0}
+.task{transition:transform .14s,box-shadow .14s}
+.task.dragging{transition:none;position:relative;z-index:3;background:var(--card);box-shadow:0 6px 22px rgba(0,0,0,.28);border-radius:12px}
+.task.dragging.done{background:var(--done-bg)}
 .chk{flex:none;width:34px;height:34px;border-radius:50%;border:2.5px solid var(--muted);background:transparent;display:grid;place-items:center;padding:0;color:transparent;transition:.12s}
 .chk svg{width:20px;height:20px}
 .task.done .chk{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -169,13 +173,13 @@ function groupEl(c, ts){
   g.appendChild(head);
   var body = h('div', {class:'gbody'});
   var shown = ts.filter(function(t){ return !(S.hideDone && t.done); });
-  shown.forEach(function(t){ body.appendChild(taskEl(t, c.wt)); });
+  shown.forEach(function(t){ body.appendChild(taskEl(t, c.wt, shown)); });
   if (!shown.length) body.appendChild(h('div', {class:'empty', text: ts.length ? 'All done here.' : 'No items yet.'}));
   if (!c.wt) {
     var inp = h('input', {type:'text', placeholder:'Add item…', enterkeyhint:'done', autocapitalize:'sentences'});
     var add = function(){
       var v = inp.value.trim(); if (!v) return;
-      S.tasks.push({ id:uid(), text:v, cat:c.id, done:false, wt:false });
+      S.tasks.push({ id:uid(), text:capFirst(v), cat:c.id, done:false, wt:false });
       save(); render();
     };
     inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') add(); });
@@ -185,7 +189,7 @@ function groupEl(c, ts){
   return g;
 }
 
-function taskEl(t, showOrigin){
+function taskEl(t, showOrigin, list){
   var origin = showOrigin && catById(t.cat) ? catById(t.cat).name : '';
   var inWt = !t.wt && S.tasks.some(function(x){ return x.wt && x.srcId === t.id; });
   var toggle = function(){
@@ -197,8 +201,62 @@ function taskEl(t, showOrigin){
   return h('div', {class:'task' + (t.done ? ' done' : '')}, [
     chk,
     h('div', {class:'txt', onclick:toggle}, [t.text, inWt ? h('span', {class:'wtmark', text:'\u2605', title:'Also on the final walk-through list'}) : null, origin ? h('small', {text:origin}) : null]),
+    list && list.length > 1 ? gripEl(t, list) : null,
     h('button', {class:'gbtn', 'aria-label':'Edit item', text:'⋯', onclick:function(){ taskSheet(t); }})
   ]);
+}
+
+/* ---------- drag to reorder (touch + mouse, via the handle) ---------- */
+function gripEl(t, list){
+  var g = h('button', {class:'grip', 'aria-label':'Drag to reorder', text:'≡'});
+  g.addEventListener('pointerdown', function(e){ startDrag(e, g, list); });
+  return g;
+}
+function startDrag(e, grip, list){
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  e.preventDefault();
+  var row = grip.parentNode, body = row.parentNode;
+  var rows = Array.prototype.filter.call(body.children, function(n){ return n.classList.contains('task'); });
+  var from = rows.indexOf(row); if (from < 0) return;
+  var sy0 = window.scrollY, startY = e.clientY, lastY = e.clientY, to = from;
+  var tops = rows.map(function(r){ var b = r.getBoundingClientRect(); return { top:b.top + sy0, h:b.height }; });
+  var rh = tops[from].h;
+  row.classList.add('dragging');
+  try { grip.setPointerCapture(e.pointerId); } catch(err){}
+  try { if (navigator.vibrate) navigator.vibrate(8); } catch(err){}
+  function update(){
+    var dy = (lastY + window.scrollY) - (startY + sy0);
+    row.style.transform = 'translateY(' + dy + 'px)';
+    var cy = tops[from].top + rh/2 + dy;
+    to = 0;
+    for (var i = 0; i < tops.length; i++) { if (cy > tops[i].top + tops[i].h/2) to = i; }
+    rows.forEach(function(r, i){
+      if (r === row) return;
+      var sh = 0;
+      if (from < to && i > from && i <= to) sh = -rh;
+      if (from > to && i >= to && i < from) sh = rh;
+      r.style.transform = sh ? 'translateY(' + sh + 'px)' : '';
+    });
+  }
+  var timer = setInterval(function(){
+    var edge = 80;
+    if (lastY < edge) window.scrollBy(0, -10); else if (lastY > window.innerHeight - edge) window.scrollBy(0, 10); else return;
+    update();
+  }, 16);
+  function onMove(ev){ lastY = ev.clientY; update(); }
+  function end(ev){
+    clearInterval(timer);
+    grip.removeEventListener('pointermove', onMove); grip.removeEventListener('pointerup', end); grip.removeEventListener('pointercancel', end);
+    try { grip.releasePointerCapture(e.pointerId); } catch(err){}
+    if (to !== from && ev.type !== 'pointercancel') {
+      var items = list.slice(), m = items.splice(from, 1)[0]; items.splice(to, 0, m);
+      var idx = list.map(function(x){ return S.tasks.indexOf(x); }).sort(function(a, b){ return a - b; });
+      idx.forEach(function(pos, k){ S.tasks[pos] = items[k]; });
+      save();
+    }
+    render();
+  }
+  grip.addEventListener('pointermove', onMove); grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
 }
 
 /* ---------- sheets ---------- */
@@ -231,12 +289,12 @@ function taskSheet(t){
   var copy = base.wt ? null : S.tasks.find(function(x){ return x.wt && x.srcId === base.id; });
   var wtInitial = !!(base.wt || copy);
 
-  var txt = h('input', {type:'text', value:base.text});
+  var txt = h('input', {type:'text', value:base.text, autocapitalize:'sentences'});
   var sel = catSelect(base.cat);
-  var newName = h('input', {type:'text', placeholder:'New category name', style:'display:none;margin-top:8px'});
+  var newName = h('input', {type:'text', placeholder:'New category name', autocapitalize:'sentences', style:'display:none;margin-top:8px'});
   var wt = h('input', {type:'checkbox'}); wt.checked = wtInitial;
   var saveBtn = btn('Save', '', function(){
-    var v = txt.value.trim(); if (v) base.text = v;
+    var v = capFirst(txt.value.trim()); if (v) base.text = v;
     if (sel.value === '__new') { var n = newName.value.trim(); if (n) base.cat = addCategory(n); }
     else base.cat = sel.value;
     if (base.wt) {                       // legacy item that was moved into the walk-through
@@ -251,7 +309,7 @@ function taskSheet(t){
   });
   var changed = function(){
     var newCat = sel.value === '__new' ? newName.value.trim() !== '' : sel.value !== base.cat;
-    var v = txt.value.trim();
+    var v = capFirst(txt.value.trim());
     var c = (v !== '' && v !== base.text) || newCat || wt.checked !== wtInitial;
     saveBtn.disabled = !c;
     newName.style.display = sel.value === '__new' ? 'block' : 'none';
@@ -275,13 +333,14 @@ function taskSheet(t){
 }
 
 function addCategory(name){
+  name = capFirst(String(name).trim());
   var ex = S.categories.find(function(c){ return c.name.toLowerCase() === name.toLowerCase(); });
   if (ex) return ex.id;
   var c = { id:uid(), name:name }; S.categories.push(c); return c.id;
 }
 
 function newCategorySheet(){
-  var inp = h('input', {type:'text', placeholder:'e.g. Garden, Kitchen, Cellar'});
+  var inp = h('input', {type:'text', placeholder:'e.g. Garden, Kitchen, Cellar', autocapitalize:'sentences'});
   var go = function(){ var n = inp.value.trim(); if (!n) return; addCategory(n); save(); closeSheet(); render(); };
   inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') go(); });
   openSheet([h('h3', {text:'New category'}), inp, actions([btn('Cancel', 'sec', closeSheet), btn('Create', '', go)])]);
@@ -300,10 +359,10 @@ function categorySheet(c){
   ])]);
 }
 function renameSheet(c){
-  var inp = h('input', {type:'text', value:c.name});
-  var go = function(){ var n = inp.value.trim(); if (n) c.name = n; save(); closeSheet(); render(); };
+  var inp = h('input', {type:'text', value:c.name, autocapitalize:'sentences'});
+  var go = function(){ var n = capFirst(inp.value.trim()); if (n) c.name = n; save(); closeSheet(); render(); };
   var sv = btn('Save','',go);
-  var chg = function(){ var v = inp.value.trim(); sv.disabled = !v || v === c.name; };
+  var chg = function(){ var v = capFirst(inp.value.trim()); sv.disabled = !v || v === c.name; };
   inp.addEventListener('input', chg);
   inp.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !sv.disabled) go(); });
   chg();
