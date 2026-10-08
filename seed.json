@@ -1,0 +1,222 @@
+[
+{
+"cat": "Electrical",
+"text": "Verteiler TV aus"
+},
+{
+"cat": "Electrical",
+"text": "Verteiler kueche aus"
+},
+{
+"cat": "Electrical",
+"text": "Verteiler schreibtisch aus"
+},
+{
+"cat": "Electrical",
+"text": "Verteiler peterzimmer aus"
+},
+{
+"cat": "Electrical",
+"text": "Waschmaschine steckdose ausstecken"
+},
+{
+"cat": "Electrical",
+"text": "Herd aus"
+},
+{
+"cat": "Electrical",
+"text": "Staubsauger ladegeraet aus"
+},
+{
+"cat": "Electrical",
+"text": "Ladegeraete im keller aus (2 x garten werkzeug, 2x bohrer)"
+},
+{
+"cat": "Electrical",
+"text": "Luftreiniger in peter zimmer aus"
+},
+{
+"cat": "Electrical",
+"text": "All AC aus und weggeraeumt"
+},
+{
+"cat": "Keller",
+"text": "Wasserhahn nach aussen zu und entlueftet"
+},
+{
+"cat": "Keller",
+"text": "Zeituhren fuer ventilatoren synced"
+},
+{
+"cat": "Keller",
+"text": "Tuer zur garage balken zu"
+},
+{
+"cat": "Keller",
+"text": "Garagen tuer zu"
+},
+{
+"cat": "Temperatur",
+"text": "All temp sticks neue batterien"
+},
+{
+"cat": "Kueche",
+"text": "Kuehlschrank abtauen"
+},
+{
+"cat": "Kueche",
+"text": "Becken trockenwischen"
+},
+{
+"cat": "Kueche",
+"text": "Wasserhahn zu"
+},
+{
+"cat": "Bad",
+"text": "Wasserhahn becken und wanne zu"
+},
+{
+"cat": "Bad",
+"text": "Becken und wanne trocken"
+},
+{
+"cat": "Heizung",
+"text": "Frostschutz stellung am thermostat (8.4 grad)"
+},
+{
+"cat": "Heizung",
+"text": "Thermostat batterien gewechselt"
+},
+{
+"cat": "Heizung",
+"text": "Kessel auf 50 grad gestellt"
+},
+{
+"cat": "Heizung",
+"text": "Alle heizungsschalter im heizraum  aus"
+},
+{
+"cat": "Heizung",
+"text": "Heizraum tuer offen"
+},
+{
+"cat": "Heizung",
+"text": "Alle heizkoerper offen"
+},
+{
+"cat": "Heizung",
+"text": "Wohnzimmer/esszimmer  moebel abstand heizkoerper"
+},
+{
+"cat": "Heizung",
+"text": "Brenner service"
+},
+{
+"cat": "Heizung",
+"text": "Genug oel fuer winter?"
+},
+{
+"cat": "Heizung",
+"text": "Oelstand fotografieren"
+},
+{
+"cat": "Wasser",
+"text": "Haupthahn abgedreht"
+},
+{
+"cat": "Wasser",
+"text": "Zettel im vorvorzimmer \"Hauptwasserhahn ist abgedreht\""
+},
+{
+"cat": "Lights",
+"text": "Check that all timed lights are set to on"
+},
+{
+"cat": "Lights",
+"text": "All lights out"
+},
+{
+"cat": "Fenster",
+"text": "Alle fensterrollen aufgelegt"
+},
+{
+"cat": "Fenster",
+"text": "Alle fenster rolllaeden zu"
+},
+{
+"cat": "Fenster",
+"text": "Vorhaenge zu auf nordseite"
+},
+{
+"cat": "Fenster",
+"text": "Alle fenster zu"
+},
+{
+"cat": "Fenster",
+"text": "Terassentuer zu"
+},
+{
+"cat": "Fenster",
+"text": "Alle zimmertueren offen"
+},
+{
+"cat": "Garten",
+"text": "Letzte rasenmaehung"
+},
+{
+"cat": "Garten",
+"text": "Hecken scheniden"
+},
+{
+"cat": "Garten",
+"text": "Mauerraender gezupft (nur am ende)"
+},
+{
+"cat": "Garten",
+"text": "Rasenmaeher service"
+},
+{
+"cat": "Garten",
+"text": "Gartenhuette zu"
+},
+{
+"cat": "Garten",
+"text": "Benzin fuer rasenmaeher kaufen"
+},
+{
+"cat": "Garten",
+"text": "Heckenscheren einoelen"
+},
+{
+"cat": "Other",
+"text": "Senkgrubenpumpe checken"
+},
+{
+"cat": "Other",
+"text": "Rinne vor garage ausputzen"
+},
+{
+"cat": "Other",
+"text": "Dachboden im regen auf lecks checken"
+},
+{
+"cat": "Other",
+"text": "Muelltonne leer oder pickup mi nachbarn geregelt"
+},
+{
+"cat": "Other",
+"text": "Gelber sack weg"
+},
+{
+"cat": "Other",
+"text": "Compost kuebel leer"
+},
+{
+"cat": "Other",
+"text": "Letzte waesche waschen"
+},
+{
+"cat": "Other",
+"text": "Gartebnmoebel in garage raeumen"
+}
+]
