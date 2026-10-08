@@ -52,7 +52,7 @@ main{padding:12px 16px}
 .task.done .chk{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .txt{flex:1;padding:8px 0;min-width:0;word-wrap:break-word;overflow-wrap:anywhere;cursor:pointer}
 .task.done .txt{text-decoration:line-through;color:var(--muted)}
-.wtmark{display:inline-block;font-size:12px;font-weight:600;color:var(--wt);background:var(--wt-bg);border-radius:8px;padding:1px 7px;margin-left:4px;white-space:nowrap;vertical-align:1px}
+.wtmark{color:var(--wt);font-size:15px;margin-left:6px;white-space:nowrap}
 .txt small{display:block;font-size:12.5px;color:var(--muted);text-decoration:none}
 .add{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line)}
 .add input{flex:1;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
@@ -196,7 +196,7 @@ function taskEl(t, showOrigin){
   chk.innerHTML = CHECK;
   return h('div', {class:'task' + (t.done ? ' done' : '')}, [
     chk,
-    h('div', {class:'txt', onclick:toggle}, [t.text, inWt ? h('span', {class:'wtmark', text:' \u2605 walk-through', title:'Also on the final walk-through list'}) : null, origin ? h('small', {text:origin}) : null]),
+    h('div', {class:'txt', onclick:toggle}, [t.text, inWt ? h('span', {class:'wtmark', text:'\u2605', title:'Also on the final walk-through list'}) : null, origin ? h('small', {text:origin}) : null]),
     h('button', {class:'gbtn', 'aria-label':'Edit item', text:'⋯', onclick:function(){ taskSheet(t); }})
   ]);
 }
