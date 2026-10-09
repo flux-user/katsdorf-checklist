@@ -23,6 +23,9 @@
     --accent:#3fae88; --accent-ink:#0b1512; --done-bg:#173026; --wt:#f0a35a; --wt-bg:#2d2113; --danger:#ef7767; }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select{-webkit-user-select:text;user-select:text}
+body.drag-on,body.drag-on *{-webkit-user-select:none!important;user-select:none!important}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
 body{padding:0 0 calc(40px + env(safe-area-inset-bottom))}
 header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid var(--line)}
@@ -270,6 +273,11 @@ function startDrag(e, grip, row, rows, onDrop){
   var tops = rows.map(function(r){ var b = r.getBoundingClientRect(); return { top:b.top + sy0, h:b.height }; });
   var rh = tops[from].h;
   row.classList.add('dragging');
+  document.body.classList.add('drag-on');
+  try { var sel = window.getSelection && window.getSelection(); if (sel) sel.removeAllRanges(); } catch(err){}
+  var noSel = function(ev){ ev.preventDefault(); };
+  document.addEventListener('selectstart', noSel);
+  grip.addEventListener('contextmenu', noSel);
   try { grip.setPointerCapture(e.pointerId); } catch(err){}
   try { if (navigator.vibrate) navigator.vibrate(10); } catch(err){}
   var block = function(ev){ if (ev.cancelable) ev.preventDefault(); };      // stop the page scrolling while an item is held
@@ -296,6 +304,9 @@ function startDrag(e, grip, row, rows, onDrop){
   function end(ev){
     clearInterval(timer);
     grip.removeEventListener('touchmove', block);
+    document.removeEventListener('selectstart', noSel); grip.removeEventListener('contextmenu', noSel);
+    document.body.classList.remove('drag-on');
+    try { var sl = window.getSelection && window.getSelection(); if (sl) sl.removeAllRanges(); } catch(err){}
     grip.removeEventListener('pointermove', onMove); grip.removeEventListener('pointerup', end); grip.removeEventListener('pointercancel', end);
     try { grip.releasePointerCapture(e.pointerId); } catch(err){}
     if (to !== from && ev.type !== 'pointercancel') { onDrop(from, to); save(); }
