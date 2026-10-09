@@ -33,6 +33,11 @@ h1{font-size:22px;margin:0;flex:1;letter-spacing:-.2px}
 .bar{flex:1;height:8px;background:var(--line);border-radius:6px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
 main{padding:12px 16px}
+.ctrl{display:flex;align-items:center;gap:8px;margin-top:8px}
+.ctrl button{border:0;border-radius:16px;background:var(--card);color:var(--accent);font-size:14px;font-weight:600;padding:7px 13px;box-shadow:0 0 0 1px var(--line) inset}
+.ctrl span{font-size:13px;color:var(--muted);margin-left:2px}
+.group{transition:transform .14s}
+.group.dragging{transition:none;position:relative;z-index:3;box-shadow:0 8px 26px rgba(0,0,0,.3)}
 .group{background:var(--card);border-radius:16px;margin:0 0 14px;box-shadow:0 0 0 1px var(--line) inset;overflow:hidden}
 .group.wt{box-shadow:0 0 0 2px var(--wt) inset;background:var(--card)}
 .ghead{display:flex;align-items:center;gap:8px;padding:0 6px 0 14px;min-height:50px}
@@ -47,7 +52,7 @@ main{padding:12px 16px}
 .gbtn{border:0;background:transparent;color:var(--muted);width:40px;height:44px;font-size:22px}
 .task{display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;border-top:1px solid var(--line);min-height:56px}
 .task.done{background:var(--done-bg)}
-.grip{border:0;background:transparent;color:var(--muted);width:36px;height:44px;font-size:24px;line-height:1;touch-action:none;cursor:grab;flex:none;padding:0}
+.grip{border:0;background:transparent;color:var(--muted);width:36px;height:44px;font-size:24px;line-height:1;touch-action:pan-y;cursor:grab;flex:none;padding:0}
 .task{transition:transform .14s,box-shadow .14s}
 .task.dragging{transition:none;position:relative;z-index:3;background:var(--card);box-shadow:0 6px 22px rgba(0,0,0,.28);border-radius:12px}
 .task.dragging.done{background:var(--done-bg)}
@@ -95,6 +100,7 @@ main{padding:12px 16px}
     <button class="icon-btn" id="menuBtn" aria-label="Menu">&#8943;</button>
   </div>
   <div class="prog"><div class="bar"><i id="barFill"></i></div><span id="progTxt"></span></div>
+  <div class="ctrl" id="ctrl"><button id="collapseAll">Collapse all</button><button id="expandAll">Expand all</button><span id="ctrlHint"></span></div>
 </header>
 <main id="main"></main>
 <div id="scrim"></div>
@@ -141,6 +147,9 @@ var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 function render(){
   var main = document.getElementById('main');
   var scroll = window.scrollY;
+  var hasList = S.tasks.length || S.categories.length;
+  document.getElementById('ctrl').style.display = hasList ? 'flex' : 'none';
+  document.getElementById('ctrlHint').textContent = allCollapsed() ? 'Hold \u2261 and drag to reorder categories' : '';
   main.innerHTML = '';
   var total = S.tasks.length, done = S.tasks.filter(function(t){ return t.done; }).length;
   document.getElementById('barFill').style.width = (total ? done/total*100 : 0) + '%';
@@ -167,6 +176,8 @@ function render(){
   window.scrollTo(0, scroll);
 }
 
+function allCollapsed(){ return S.categories.length > 1 && S.categories.every(function(c){ return !!S.collapsed[c.id]; }); }
+
 function groupEl(c, ts){
   var d = ts.filter(function(t){ return t.done; }).length;
   var collapsed = c.wt ? S.collapsed[c.id] !== false : !!S.collapsed[c.id];   // walk-through group starts collapsed
@@ -177,6 +188,7 @@ function groupEl(c, ts){
     h('span', {class:'cnt', text: d + '/' + ts.length})
   ]);
   if (!c.wt) head.appendChild(h('button', {class:'gbtn', 'aria-label':'Category options', text:'⋯', onclick:function(){ categorySheet(c); }}));
+  if (!c.wt && allCollapsed()) head.appendChild(categoryGrip());
   g.appendChild(head);
   var body = h('div', {class:'gbody'});
   var shown = ts.filter(function(t){ return !(S.hideDone && t.done); });
@@ -208,29 +220,60 @@ function taskEl(t, showOrigin, list){
   return h('div', {class:'task' + (t.done ? ' done' : '')}, [
     chk,
     h('div', {class:'txt', onclick:toggle}, [t.text, inWt ? h('span', {class:'wtmark', text:'\u2605', title:'Also on the final walk-through list'}) : null, origin ? h('small', {text:origin}) : null]),
-    list && list.length > 1 ? gripEl(t, list) : null,
-    h('button', {class:'gbtn', 'aria-label':'Edit item', text:'⋯', onclick:function(){ taskSheet(t); }})
+    h('button', {class:'gbtn', 'aria-label':'Edit item', text:'⋯', onclick:function(){ taskSheet(t); }}),
+    list && list.length > 1 ? taskGrip(list) : null
   ]);
 }
 
-/* ---------- drag to reorder (touch + mouse, via the handle) ---------- */
-function gripEl(t, list){
-  var g = h('button', {class:'grip', 'aria-label':'Drag to reorder', text:'≡'});
-  g.addEventListener('pointerdown', function(e){ startDrag(e, g, list); });
+/* ---------- drag to reorder ---------- */
+// Touch: press and HOLD the handle (~0.2 s) before it picks the item up; a normal swipe over it just scrolls.
+// Mouse: drag immediately.
+function gripEl(label, begin){
+  var g = h('button', {class:'grip', 'aria-label':label, text:'≡'});
+  g.addEventListener('pointerdown', function(e){ armDrag(e, g, begin); });
   return g;
 }
-function startDrag(e, grip, list){
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  e.preventDefault();
-  var row = grip.parentNode, body = row.parentNode;
-  var rows = Array.prototype.filter.call(body.children, function(n){ return n.classList.contains('task'); });
+function taskGrip(list){
+  return gripEl('Hold and drag to reorder item', function(ev, g){
+    var row = g.parentNode;
+    var rows = Array.prototype.filter.call(row.parentNode.children, function(n){ return n.classList.contains('task'); });
+    startDrag(ev, g, row, rows, function(from, to){
+      var items = list.slice(), m = items.splice(from, 1)[0]; items.splice(to, 0, m);
+      var idx = list.map(function(x){ return S.tasks.indexOf(x); }).sort(function(a, b){ return a - b; });
+      idx.forEach(function(pos, k){ S.tasks[pos] = items[k]; });
+    });
+  });
+}
+function categoryGrip(){
+  return gripEl('Hold and drag to reorder category', function(ev, g){
+    var row = g.parentNode.parentNode;
+    var rows = Array.prototype.filter.call(row.parentNode.children, function(n){ return n.classList.contains('group') && !n.classList.contains('wt'); });
+    startDrag(ev, g, row, rows, function(from, to){
+      var m = S.categories.splice(from, 1)[0]; S.categories.splice(to, 0, m);
+    });
+  });
+}
+function armDrag(e, grip, begin){
+  if (e.pointerType === 'mouse') {
+    if (e.button !== 0) return;
+    e.preventDefault(); begin({ pointerId:e.pointerId, clientY:e.clientY }, grip); return;
+  }
+  var id = e.pointerId, sx = e.clientX, sy = e.clientY, ly = sy, tm;
+  function stop(){ clearTimeout(tm); grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', stop); grip.removeEventListener('pointercancel', stop); }
+  function mv(ev){ ly = ev.clientY; if (Math.abs(ev.clientY - sy) > 8 || Math.abs(ev.clientX - sx) > 8) stop(); }
+  tm = setTimeout(function(){ stop(); begin({ pointerId:id, clientY:ly }, grip); }, 220);
+  grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', stop); grip.addEventListener('pointercancel', stop);
+}
+function startDrag(e, grip, row, rows, onDrop){
   var from = rows.indexOf(row); if (from < 0) return;
   var sy0 = window.scrollY, startY = e.clientY, lastY = e.clientY, to = from;
   var tops = rows.map(function(r){ var b = r.getBoundingClientRect(); return { top:b.top + sy0, h:b.height }; });
   var rh = tops[from].h;
   row.classList.add('dragging');
   try { grip.setPointerCapture(e.pointerId); } catch(err){}
-  try { if (navigator.vibrate) navigator.vibrate(8); } catch(err){}
+  try { if (navigator.vibrate) navigator.vibrate(10); } catch(err){}
+  var block = function(ev){ if (ev.cancelable) ev.preventDefault(); };      // stop the page scrolling while an item is held
+  grip.addEventListener('touchmove', block, { passive:false });
   function update(){
     var dy = (lastY + window.scrollY) - (startY + sy0);
     row.style.transform = 'translateY(' + dy + 'px)';
@@ -246,21 +289,16 @@ function startDrag(e, grip, list){
     });
   }
   var timer = setInterval(function(){
-    var edge = 80;
-    if (lastY < edge) window.scrollBy(0, -10); else if (lastY > window.innerHeight - edge) window.scrollBy(0, 10); else return;
+    if (lastY < 150) window.scrollBy(0, -10); else if (lastY > window.innerHeight - 80) window.scrollBy(0, 10); else return;
     update();
   }, 16);
   function onMove(ev){ lastY = ev.clientY; update(); }
   function end(ev){
     clearInterval(timer);
+    grip.removeEventListener('touchmove', block);
     grip.removeEventListener('pointermove', onMove); grip.removeEventListener('pointerup', end); grip.removeEventListener('pointercancel', end);
     try { grip.releasePointerCapture(e.pointerId); } catch(err){}
-    if (to !== from && ev.type !== 'pointercancel') {
-      var items = list.slice(), m = items.splice(from, 1)[0]; items.splice(to, 0, m);
-      var idx = list.map(function(x){ return S.tasks.indexOf(x); }).sort(function(a, b){ return a - b; });
-      idx.forEach(function(pos, k){ S.tasks[pos] = items[k]; });
-      save();
-    }
+    if (to !== from && ev.type !== 'pointercancel') { onDrop(from, to); save(); }
     render();
   }
   grip.addEventListener('pointermove', onMove); grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
@@ -584,6 +622,14 @@ document.addEventListener('input', function(e){
     try { el.setSelectionRange(a, b); } catch(err){}
   }
 }, true);
+
+function setAllCollapsed(v){
+  S.categories.forEach(function(c){ S.collapsed[c.id] = v; });
+  S.collapsed['__wt'] = v;
+  save(); render(); window.scrollTo(0, 0);
+}
+document.getElementById('collapseAll').addEventListener('click', function(){ setAllCollapsed(true); });
+document.getElementById('expandAll').addEventListener('click', function(){ setAllCollapsed(false); });
 
 /* ---------- boot ---------- */
 render();
