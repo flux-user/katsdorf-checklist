@@ -216,7 +216,11 @@ function taskEl(t, showOrigin, list){
   var inWt = !t.wt && S.tasks.some(function(x){ return x.wt && x.srcId === t.id; });
   var toggle = function(){
     if (t.done) { toast('Already done \u2014 use \u22EF to untick'); return; }
-    t.done = true; t.doneAt = new Date().toISOString(); save(); render();
+    openSheet([
+      h('h3', {text:'Mark as done?'}),
+      h('p', {style:'font-size:18px;margin:4px 0 6px', text:t.text}),
+      actions([btn('Cancel','sec',closeSheet), btn('Mark done','',function(){ t.done = true; t.doneAt = new Date().toISOString(); save(); closeSheet(); render(); })])
+    ]);
   };
   var chk = h('button', {class:'chk', 'aria-label': t.done ? 'Done' : 'Mark done', 'aria-pressed': String(t.done), onclick:toggle});
   chk.innerHTML = CHECK;
